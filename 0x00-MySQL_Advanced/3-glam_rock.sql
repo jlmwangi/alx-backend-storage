@@ -5,5 +5,5 @@ SELECT
 	WHEN split IS NULL OR split > 2022 THEN 2022 - formed
 	ELSE split - formed
     END AS lifespan
-FROM metal_bands WHERE style = 'Glam rock'
+FROM metal_bands WHERE SUBSTRING_INDEX(style, ',', 1) = 'Glam rock'
 ORDER BY lifespan DESC;
