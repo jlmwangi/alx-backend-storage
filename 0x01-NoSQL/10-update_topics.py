@@ -9,6 +9,6 @@ def update_topics(mongo_collection, name, topics):
     '''updates topics of a school based on the name'''
     update_topic = mongo_collection.update_one(
             { "name": name },
-            { $set: { "topics": topics } }
+            { "$set": { "topics": topics } }
     )
     return update_topic
