@@ -5,6 +5,25 @@
 import redis
 import uuid
 from typing import Callable, Optional, Union
+from functools import wraps
+
+
+call_counts = {}
+
+
+def count_calls(method: Callable) -> Callable:
+    @wraps(method)
+    def wrapper(*args, **kwargs):
+        '''get qualified name of method'''
+        method_name = method.__qualname__
+
+        if method_name in call_counts:
+            call_counts[method_name] += 1
+        else:
+            call_counts[method_name] = 1
+
+        return method(*args, **kwargs)  # call original method, return result
+    return wrapper
 
 
 class Cache:
@@ -15,6 +34,7 @@ class Cache:
         self._redis = redis.Redis()
         self._redis.flushdb()  # flush the current database
 
+    @count_calls
     def store(self, data: str | bytes | int | float) -> str:
         '''generates a random key and stores input data in redis
         using the key'''
@@ -22,8 +42,8 @@ class Cache:
         self._redis.set(random_key, data)
         return random_key
 
-    def get(self, key: str, fn: Optional[Callable[bytes], Union[str,
-            bytes, int, float]] = None) -> Optional[Union[str,
+    def get(self, key: str, fn: Optional[Callable[[bytes], Union[str,
+            bytes, int, float]]] = None) -> Optional[Union[str,
                                                     bytes, int, float]]:
         '''optional callable that converts data back to desired format'''
         data = self._redis.get(key)  # get data based on the key
