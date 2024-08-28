@@ -26,6 +26,24 @@ def count_calls(method: Callable) -> Callable:
     return wrapper
 
 
+def call_history(method: Callable) -> Callable:
+    '''stores history of inputs and outputs'''
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        '''generate redis keys for inputs and outputs'''
+        input_key = f'{method.__qualname__}:inputs'
+        output_key = f'{method.__qualname__}:outputs'
+
+        self._redis.rpush(input_key, str(args))  # store input args as string
+
+        res = method(self, *args, **kwargs)  # call original method
+
+        self._redis.rpush(output_key, str(res))
+
+        return res
+    return wrapper
+
+
 class Cache:
     '''contains two methods, an init method to store a private redis instance
     and a store method to store input data using the random key generated'''
@@ -35,6 +53,7 @@ class Cache:
         self._redis.flushdb()  # flush the current database
 
     @count_calls
+    @call_history
     def store(self, data: str | bytes | int | float) -> str:
         '''generates a random key and stores input data in redis
         using the key'''
@@ -44,7 +63,7 @@ class Cache:
 
     def get(self, key: str, fn: Optional[Callable[[bytes], Union[str,
             bytes, int, float]]] = None) -> Optional[Union[str,
-                                                    bytes, int, float]]:
+                                                     bytes, int, float]]:
         '''optional callable that converts data back to desired format'''
         data = self._redis.get(key)  # get data based on the key
         if data is not None:
